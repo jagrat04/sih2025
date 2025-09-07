@@ -2,71 +2,95 @@
 import sys
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QPushButton, QLabel, QVBoxLayout,
-    QMessageBox, QTextEdit, QComboBox
+    QMessageBox, QTextEdit, QComboBox, QProgressBar
 )
-import wipe
+from drive_manager import list_drives
+from wipe_manager import WIPE_METHODS, WipeThread
+import report_generator
 
 
 class WiperApp(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("SecureWiper GUI")
-        self.resize(600, 400)
+        self.resize(700, 500)
 
         layout = QVBoxLayout()
 
         self.label = QLabel("Select a drive and wipe method:")
         layout.addWidget(self.label)
 
-        # Button to refresh drive list
-        self.refresh_button = QPushButton("Refresh Drive List")
-        self.refresh_button.clicked.connect(self.load_drives)
-        layout.addWidget(self.refresh_button)
-
-        # Dropdown for drives
+        # Drive dropdown
         self.drive_dropdown = QComboBox()
         layout.addWidget(self.drive_dropdown)
 
-        # Dropdown for wipe methods
+        # Refresh button
+        self.refresh_button = QPushButton("Refresh Drives")
+        self.refresh_button.clicked.connect(self.load_drives)
+        layout.addWidget(self.refresh_button)
+
+        # Method dropdown
         self.method_dropdown = QComboBox()
-        for k, v in wipe.WIPE_METHODS.items():
-            self.method_dropdown.addItem(f"{k}. {v}", k)
+        for k, v in WIPE_METHODS.items():
+            self.method_dropdown.addItem(f"{k}. {v}", v)
         layout.addWidget(self.method_dropdown)
 
-        # Wipe button
+        # Start wipe button
         self.wipe_button = QPushButton("Start Wipe")
         self.wipe_button.clicked.connect(self.start_wipe)
         layout.addWidget(self.wipe_button)
 
-        # Output box
-        self.output_box = QTextEdit()
-        self.output_box.setReadOnly(True)
-        layout.addWidget(self.output_box)
+        # Progress bar
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setRange(0, 0)  # indeterminate
+        self.progress_bar.hide()
+        layout.addWidget(self.progress_bar)
+
+        # Log box
+        self.log_box = QTextEdit()
+        self.log_box.setReadOnly(True)
+        layout.addWidget(self.log_box)
 
         self.setLayout(layout)
         self.load_drives()
 
     def load_drives(self):
-        drives = wipe.list_drives()
+        drives = list_drives()
         self.drive_dropdown.clear()
         for d in drives:
-            # first word in line is the drive name
-            drive_name = d.split()[0]
-            self.drive_dropdown.addItem(d, drive_name)
+            self.drive_dropdown.addItem(d, d.split()[0])
 
     def start_wipe(self):
         drive = self.drive_dropdown.currentData()
         method = self.method_dropdown.currentData()
-        success, message = wipe.wipe_drive(drive, method)
+        if not drive:
+            QMessageBox.warning(self, "Error", "No drive selected")
+            return
+
+        self.progress_bar.show()
+        self.log_box.clear()
+
+        self.thread = WipeThread(drive, method)
+        self.thread.progress.connect(self.update_log)
+        self.thread.finished.connect(self.wipe_done)
+        self.thread.start()
+
+    def update_log(self, line):
+        self.log_box.append(line)
+
+    def wipe_done(self, success):
+        self.progress_bar.hide()
+        drive = self.drive_dropdown.currentData()
+        method = self.method_dropdown.currentData()
+        pdf, js = report_generator.generate_report(drive, method, success)
 
         msg = QMessageBox()
         if success:
-            msg.setText(f"✅ Success: {message}")
+            msg.setText(f"✅ Wipe completed.\nReport saved:\n{pdf}\n{js}")
         else:
-            msg.setText(f"❌ Failed: {message}")
+            msg.setText(f"❌ Wipe failed.\nReport saved:\n{pdf}\n{js}")
         msg.exec_()
-
-        self.output_box.append(message)
+        self.log_box.append("=== Wipe Done ===")
 
 
 if __name__ == "__main__":
