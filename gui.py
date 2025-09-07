@@ -1,60 +1,72 @@
 # gui.py
 import sys
 from PyQt5.QtWidgets import (
-    QApplication, QWidget, QPushButton, QFileDialog,
-    QLabel, QVBoxLayout, QMessageBox, QTextEdit
+    QApplication, QWidget, QPushButton, QLabel, QVBoxLayout,
+    QMessageBox, QTextEdit, QComboBox
 )
 import wipe
-import os
 
 
 class WiperApp(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("SecureWiper GUI")
-        self.resize(600, 350)
+        self.resize(600, 400)
 
         layout = QVBoxLayout()
 
-        self.label = QLabel(
-            "Choose a file to securely wipe.\n"
-            "Certificates (PDF + JSON) will be generated."
-        )
+        self.label = QLabel("Select a drive and wipe method:")
         layout.addWidget(self.label)
 
-        self.button = QPushButton("Select File to Wipe")
-        self.button.clicked.connect(self.select_file)
-        layout.addWidget(self.button)
+        # Button to refresh drive list
+        self.refresh_button = QPushButton("Refresh Drive List")
+        self.refresh_button.clicked.connect(self.load_drives)
+        layout.addWidget(self.refresh_button)
 
-        # Text box to show certificate paths
+        # Dropdown for drives
+        self.drive_dropdown = QComboBox()
+        layout.addWidget(self.drive_dropdown)
+
+        # Dropdown for wipe methods
+        self.method_dropdown = QComboBox()
+        for k, v in wipe.WIPE_METHODS.items():
+            self.method_dropdown.addItem(f"{k}. {v}", k)
+        layout.addWidget(self.method_dropdown)
+
+        # Wipe button
+        self.wipe_button = QPushButton("Start Wipe")
+        self.wipe_button.clicked.connect(self.start_wipe)
+        layout.addWidget(self.wipe_button)
+
+        # Output box
         self.output_box = QTextEdit()
         self.output_box.setReadOnly(True)
         layout.addWidget(self.output_box)
 
         self.setLayout(layout)
+        self.load_drives()
 
-    def select_file(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "Select File to Wipe")
-        if file_path:
-            result = wipe.wipe_file(file_path)
+    def load_drives(self):
+        drives = wipe.list_drives()
+        self.drive_dropdown.clear()
+        for d in drives:
+            # first word in line is the drive name
+            drive_name = d.split()[0]
+            self.drive_dropdown.addItem(d, drive_name)
 
-            msg = QMessageBox()
-            if result:
-                pdf_file, json_file = result
-                msg.setText(f"✅ File wiped successfully!\nCertificates generated.")
-                msg.exec_()
+    def start_wipe(self):
+        drive = self.drive_dropdown.currentData()
+        method = self.method_dropdown.currentData()
+        success, message = wipe.wipe_drive(drive, method)
 
-                self.output_box.append("Certificates created:\n")
-                self.output_box.append(f"📄 PDF: {pdf_file}")
-                self.output_box.append(f"📝 JSON: {json_file}\n")
+        msg = QMessageBox()
+        if success:
+            msg.setText(f"✅ Success: {message}")
+        else:
+            msg.setText(f"❌ Failed: {message}")
+        msg.exec_()
 
-                # optional: auto-open PDF
-                if os.path.exists(pdf_file):
-                    os.system(f"xdg-open '{pdf_file}' &")
-
-            else:
-                msg.setText(f"❌ Failed to wipe {file_path}")
-                msg.exec_()
+        self.output_box.append(message)
 
 
 if __name__ == "__main__":

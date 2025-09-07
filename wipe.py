@@ -1,71 +1,65 @@
 # wipe.py
+import subprocess
 import os
+import datetime
 import json
-from datetime import datetime
-from reportlab.pdfgen import canvas
-from cryptography.fernet import Fernet
 
-# generate or reuse encryption key (for signing wipe certificates)
-KEY_FILE = "certificate.key"
-if not os.path.exists(KEY_FILE):
-    with open(KEY_FILE, "wb") as kf:
-        kf.write(Fernet.generate_key())
-
-with open(KEY_FILE, "rb") as kf:
-    fernet = Fernet(kf.read())
+WIPE_METHODS = {
+    "1": "zero",       # Overwrite with zeros
+    "2": "random",     # Overwrite with random data
+    "3": "dodshort",   # DoD 5220.22-M short
+    "4": "dod",        # Full DoD
+    "5": "gutmann"     # Gutmann (35 passes)
+}
 
 
-def generate_certificate(file_path, status):
-    """Generate PDF + JSON certificate for wipe."""
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    cert_data = {
-        "file": file_path,
-        "status": status,
-        "timestamp": timestamp,
-    }
+def wipe_drive(drive, method):
+    if method not in WIPE_METHODS:
+        return False, "Invalid method"
 
-    # sign data (tamper-proof)
-    signature = fernet.encrypt(json.dumps(cert_data).encode()).decode()
-    cert_data["signature"] = signature
-
-    # JSON certificate
-    json_file = f"{file_path}_wipe_certificate.json"
-    with open(json_file, "w") as jf:
-        json.dump(cert_data, jf, indent=4)
-
-    # PDF certificate
-    pdf_file = f"{file_path}_wipe_certificate.pdf"
-    c = canvas.Canvas(pdf_file)
-    c.setFont("Helvetica", 12)
-    c.drawString(100, 750, "SecureWiper - Wipe Certificate")
-    c.drawString(100, 720, f"File: {file_path}")
-    c.drawString(100, 700, f"Status: {status}")
-    c.drawString(100, 680, f"Timestamp: {timestamp}")
-    c.drawString(100, 660, f"Signature: {signature[:60]}...")
-    c.save()
-
-    print(f"Certificate generated: {pdf_file}, {json_file}")
-    return pdf_file, json_file
+    wipe_method = WIPE_METHODS[method]
+    cmd = ["sudo", "nwipe", "--method", wipe_method, f"/dev/{drive}"]
+    try:
+        subprocess.run(cmd, check=True)
+        return True, f"/dev/{drive} wiped with {wipe_method}"
+    except subprocess.CalledProcessError as e:
+        return False, str(e)
 
 
-def wipe_file(file_path, passes=3):
-    """Securely wipe a file with random data (default 3 passes)."""
-    if not os.path.isfile(file_path):
-        print(f"File {file_path} not found!")
-        generate_certificate(file_path, "FAILED - Not Found")
+def wipe_file(file_path):
+    """Wipes a file using shred, then creates PDF + JSON certificates."""
+    if not os.path.exists(file_path):
         return None
 
-    length = os.path.getsize(file_path)
+    try:
+        subprocess.run(["shred", "-u", "-v", file_path], check=True)
 
-    with open(file_path, "ba+", buffering=0) as f:
-        for i in range(passes):
-            print(f"Pass {i+1}/{passes} wiping...")
-            f.seek(0)
-            f.write(os.urandom(length))
+        # Generate certificates
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        base_name = os.path.basename(file_path)
+        pdf_file = f"{base_name}_{timestamp}.pdf"
+        json_file = f"{base_name}_{timestamp}.json"
 
-    os.remove(file_path)
-    print(f"File {file_path} securely wiped.")
+        # Write JSON certificate
+        cert_data = {
+            "file": base_name,
+            "timestamp": timestamp,
+            "method": "shred -u -v (secure delete)"
+        }
+        with open(json_file, "w") as f:
+            json.dump(cert_data, f, indent=4)
 
-    # return cert file paths
-    pdf_file, json_file = generate_certificate(file_path, "SUCCESS - Wiped")
-    return pdf_file, json_file
+        # Create PDF certificate
+        from reportlab.lib.pagesizes import letter
+        from reportlab.pdfgen import canvas
+        c = canvas.Canvas(pdf_file, pagesize=letter)
+        c.drawString(100, 750, "Secure Wipe Certificate")
+        c.drawString(100, 720, f"File: {base_name}")
+        c.drawString(100, 700, f"Time: {timestamp}")
+        c.drawString(100, 680, f"Method: shred -u -v")
+        c.save()
+
+        return pdf_file, json_file
+    except Exception as e:
+        print("Error wiping file:", e)
+        return None
