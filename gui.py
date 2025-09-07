@@ -80,9 +80,9 @@ class WiperApp(QWidget):
 
     def wipe_done(self, success):
         self.progress_bar.hide()
-        drive = self.drive_dropdown.currentData()
-        method = self.method_dropdown.currentData()
-        pdf, js = report_generator.generate_report(drive, method, success)
+        # drive = self.drive_dropdown.currentData()
+        # method = self.method_dropdown.currentData()
+        # pdf, js = report_generator.generate_report(drive, method, success)
 
         msg = QMessageBox()
         if success:
