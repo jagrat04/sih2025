@@ -21,7 +21,7 @@ def wipe_drive(drive, method):
     if method not in WIPE_METHODS:
         print("Invalid method selected!")
         return
-    
+
     wipe_method = WIPE_METHODS[method]
     cmd = ["sudo", "nwipe", "--method", wipe_method, f"/dev/{drive}"]
     print(f"\nRunning: {' '.join(cmd)}\n")
@@ -31,7 +31,10 @@ def wipe_drive(drive, method):
     except subprocess.CalledProcessError:
         print("Error: Failed to run nwipe. Is it installed and run as root?")
 
+
+
 def main():
+    
     while True:
         print("\n=== Drive Wiper Tool (Linux) ===")
         print("1. List drives")

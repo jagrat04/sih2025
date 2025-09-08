@@ -56,24 +56,30 @@ class WiperApp(QWidget):
 
     def load_drives(self):
         drives = list_drives()
+        # inside load_drives()
         self.drive_dropdown.clear()
         for d in drives:
-            self.drive_dropdown.addItem(d, d.split()[0])
+            if "error" in d:
+                self.drive_dropdown.addItem(d["error"], None)
+                continue
+            display = f"{d['name']} | {d['size']} | {d['model']} | {d['media_type']}"
+            self.drive_dropdown.addItem(display, d)
+
 
     def start_wipe(self):
-        drive = self.drive_dropdown.currentData()
-        method = self.method_dropdown.currentData()
-        if not drive:
+        drive_info = self.drive_dropdown.currentData()
+        if not drive_info:
             QMessageBox.warning(self, "Error", "No drive selected")
             return
 
         self.progress_bar.show()
         self.log_box.clear()
 
-        self.thread = WipeThread(drive, method)
+        self.thread = WipeThread(drive_info["name"], drive_info["media_type"])
         self.thread.progress.connect(self.update_log)
         self.thread.finished.connect(self.wipe_done)
         self.thread.start()
+
 
     def update_log(self, line):
         self.log_box.append(line)

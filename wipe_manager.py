@@ -2,25 +2,44 @@
 import subprocess
 from PyQt5.QtCore import QThread, pyqtSignal
 
-WIPE_METHODS = {
-    "1": "zero",
-    "2": "random",
-    "3": "dodshort",
-    "4": "dod",
-    "5": "gutmann"
+# NIST mapping table
+NIST_METHODS = {
+    "HDD":        ("Overwrite 1-pass", ["sudo", "nwipe", "--method=zero"]),
+    "SATA SSD":   ("Secure Erase", ["sudo", "hdparm", "--security-erase", "p"]),
+    "NVMe M.2 SSD": ("NVMe Format", ["sudo", "nvme", "format"]),
+    "USB Thumb Drive": ("Overwrite", ["sudo", "dd", "if=/dev/zero", "bs=64M"]),
+    "SD / microSD":   ("Overwrite", ["sudo", "dd", "if=/dev/zero", "bs=64M"]),
+    "Unknown":    ("Default Overwrite", ["sudo", "nwipe", "--method=zero"])
 }
 
-class WipeThread(QThread):
-    progress = pyqtSignal(str)   # progress log line
-    finished = pyqtSignal(bool)  # success/fail
 
-    def __init__(self, drive, method):
+class WipeThread(QThread):
+    progress = pyqtSignal(str)
+    finished = pyqtSignal(bool)
+
+    def __init__(self, drive, media_type):
         super().__init__()
         self.drive = drive
-        self.method = method
+        self.media_type = media_type
 
     def run(self):
-        cmd = ["sudo", "nwipe", "--method", self.method, f"/dev/{self.drive}"]
+        method_name, base_cmd = NIST_METHODS.get(self.media_type, NIST_METHODS["Unknown"])
+
+        # Finalize full command depending on tool
+        if "nwipe" in base_cmd[0]:
+            cmd = base_cmd + [f"/dev/{self.drive}"]
+        elif "hdparm" in base_cmd[0]:
+            cmd = base_cmd + [f"/dev/{self.drive}"]
+        elif "nvme" in base_cmd[0]:
+            cmd = base_cmd + [f"/dev/{self.drive}"]
+        elif "dd" in base_cmd[0]:
+            cmd = base_cmd + [f"of=/dev/{self.drive}"]
+        else:
+            cmd = base_cmd + [f"/dev/{self.drive}"]
+
+        self.progress.emit(f"Using NIST method: {method_name}")
+        self.progress.emit(f"Running command: {' '.join(cmd)}")
+
         try:
             process = subprocess.Popen(
                 cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
