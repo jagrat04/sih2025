@@ -43,13 +43,32 @@ def get_command_for_device(dev):
         return None, "Unknown"
 
 # NIST mapping table
+# NIST-approved wiping methods mapped to device types
 NIST_METHODS = {
-    "HDD":        ("Overwrite 1-pass", ["sudo", "nwipe", "--method=zero"]),
-    "SATA SSD":   ("Secure Erase", ["sudo", "hdparm", "--security-erase", "p"]),
-    "NVMe M.2 SSD": ("NVMe Format", ["sudo", "nvme", "format"]),
-    "USB Thumb Drive": ("Overwrite", ["sudo", "dd", "if=/dev/zero", "bs=64M"]),
-    "SD / microSD":   ("Overwrite", ["sudo", "dd", "if=/dev/zero", "bs=64M"]),
-    "Unknown":    ("Default Overwrite", ["sudo", "nwipe", "--method=zero"])
+    "HDD": (
+        "Overwrite 1-pass",
+        ["sudo", "nwipe", "--autonuke", "--method=zero"]
+    ),
+    "SATA SSD": (
+        "Secure Erase",
+        ["sudo", "hdparm", "--user-master", "u", "--security-erase", "p"]
+    ),
+    "NVMe M.2 SSD": (
+        "NVMe Format",
+        ["sudo", "nvme", "format"]
+    ),
+    "USB Thumb Drive": (
+        "Overwrite",
+        ["sudo", "dd", "if=/dev/zero", "bs=64M", "status=progress"]
+    ),
+    "SD / microSD": (
+        "Overwrite",
+        ["sudo", "dd", "if=/dev/zero", "bs=64M", "status=progress"]
+    ),
+    "Unknown": (
+        "Default Overwrite",
+        ["sudo", "nwipe", "--autonuke", "--method=zero"]
+    ),
 }
 
 
