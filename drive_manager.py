@@ -11,6 +11,27 @@ def get_boot_drive():
     except Exception:
         return None
 
+# import subprocess
+
+def get_drive_type(dev):
+    try:
+        # Get drive info
+        output = subprocess.check_output(["lsblk", "-d", "-o", "NAME,ROTA,TYPE,MODEL", dev], text=True)
+        if "nvme" in dev:
+            return "NVMe SSD"
+        elif "usb" in output.lower():
+            return "USB"
+        elif "mmc" in dev:
+            return "SD Card"
+        elif "0 disk" in output:  # non-rotational = SSD
+            return "SATA SSD"
+        elif "1 disk" in output:  # rotational = HDD
+            return "HDD"
+    except Exception as e:
+        print("Error detecting type:", e)
+    return "Unknown"
+
+
 
 def list_drives():
     """Return list of drives with classification."""

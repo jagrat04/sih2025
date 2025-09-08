@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (
     QMessageBox, QTextEdit, QComboBox, QProgressBar
 )
 from drive_manager import list_drives
-from wipe_manager import WIPE_METHODS, WipeThread
+from wipe_manager import WipeThread
 import report_generator
 
 
@@ -17,7 +17,7 @@ class WiperApp(QWidget):
 
         layout = QVBoxLayout()
 
-        self.label = QLabel("Select a drive and wipe method:")
+        self.label = QLabel("Select a drive to wipe (method auto-selected per NIST):")
         layout.addWidget(self.label)
 
         # Drive dropdown
@@ -28,12 +28,6 @@ class WiperApp(QWidget):
         self.refresh_button = QPushButton("Refresh Drives")
         self.refresh_button.clicked.connect(self.load_drives)
         layout.addWidget(self.refresh_button)
-
-        # Method dropdown
-        self.method_dropdown = QComboBox()
-        for k, v in WIPE_METHODS.items():
-            self.method_dropdown.addItem(f"{k}. {v}", v)
-        layout.addWidget(self.method_dropdown)
 
         # Start wipe button
         self.wipe_button = QPushButton("Start Wipe")
@@ -56,7 +50,6 @@ class WiperApp(QWidget):
 
     def load_drives(self):
         drives = list_drives()
-        # inside load_drives()
         self.drive_dropdown.clear()
         for d in drives:
             if "error" in d:
@@ -65,37 +58,51 @@ class WiperApp(QWidget):
             display = f"{d['name']} | {d['size']} | {d['model']} | {d['media_type']}"
             self.drive_dropdown.addItem(display, d)
 
-
     def start_wipe(self):
         drive_info = self.drive_dropdown.currentData()
         if not drive_info:
             QMessageBox.warning(self, "Error", "No drive selected")
             return
 
+        confirm = QMessageBox.question(
+            self,
+            "Confirm Wipe",
+            f"Are you sure you want to wipe {drive_info['name']} "
+            f"({drive_info['media_type']})?\n"
+            f"NIST method will be auto-selected."
+        )
+        if confirm != QMessageBox.Yes:
+            return
+
         self.progress_bar.show()
         self.log_box.clear()
 
+        # Start wipe thread with auto method (decided inside wipe_manager)
         self.thread = WipeThread(drive_info["name"], drive_info["media_type"])
         self.thread.progress.connect(self.update_log)
         self.thread.finished.connect(self.wipe_done)
         self.thread.start()
 
-
     def update_log(self, line):
         self.log_box.append(line)
 
-    def wipe_done(self, success):
+    def wipe_done(self, result):
         self.progress_bar.hide()
-        # drive = self.drive_dropdown.currentData()
-        # method = self.method_dropdown.currentData()
-        # pdf, js = report_generator.generate_report(drive, method, success)
+
+        drive = self.drive_dropdown.currentData()
+        success, method, pdf, js = result  # thread returns tuple
 
         msg = QMessageBox()
         if success:
-            msg.setText(f"✅ Wipe completed.\nReport saved:\n{pdf}\n{js}")
+            msg.setText(f"✅ Wipe completed.\n"
+                        f"Drive: {drive['name']}\n"
+                        f"Method: {method}\n"
+                        f"Reports:\n📄 {pdf}\n📝 {js}")
         else:
-            msg.setText(f"❌ Wipe failed.\nReport saved:\n{pdf}\n{js}")
+            msg.setText(f"❌ Wipe failed for {drive['name']}.\n"
+                        f"Reports:\n📄 {pdf}\n📝 {js}")
         msg.exec_()
+
         self.log_box.append("=== Wipe Done ===")
 
 

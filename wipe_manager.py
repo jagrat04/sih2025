@@ -1,6 +1,46 @@
 # wipe_manager.py
 import subprocess
 from PyQt5.QtCore import QThread, pyqtSignal
+from drive_manager import get_drive_type, list_drives
+
+WIPE_METHODS = {
+    "HDD": {
+        "method": "Overwrite 1-pass",
+        "command": lambda dev: ["nwipe", "--method=zero", dev]
+    },
+    "SATA SSD": {
+        "method": "Secure Erase",
+        "command": lambda dev: ["hdparm", "--user-master", "u", "--security-set-pass", "p", dev, "&&",
+                                "hdparm", "--user-master", "u", "--security-erase", "p", dev]
+    },
+    "NVMe SSD": {
+        "method": "NVMe Format",
+        "command": lambda dev: ["nvme", "format", dev]
+    },
+    "USB": {
+        "method": "Overwrite",
+        "command": lambda dev: ["dd", "if=/dev/zero", f"of={dev}", "bs=64M", "status=progress"]
+    },
+    "SD Card": {
+        "method": "Overwrite",
+        "command": lambda dev: ["dd", "if=/dev/zero", f"of={dev}", "bs=64M", "status=progress"]
+    },
+    "Android (encrypted)": {
+        "method": "Crypto Erase",
+        "command": lambda dev: ["echo", "Factory reset required (key discard)"]
+    },
+    "Android (unencrypted)": {
+        "method": "Overwrite",
+        "command": lambda dev: ["fastboot", "erase", "userdata"]
+    }
+}
+
+def get_command_for_device(dev):
+    drive_type = get_drive_type(dev)
+    if drive_type in WIPE_METHODS:
+        return WIPE_METHODS[drive_type]["command"](dev), WIPE_METHODS[drive_type]["method"]
+    else:
+        return None, "Unknown"
 
 # NIST mapping table
 NIST_METHODS = {
