@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (
 )
 from drive_manager import list_drives
 from wipe_manager import WipeThread
-import report_generator
+# import report_generator
 
 
 class WiperApp(QWidget):
@@ -64,15 +64,15 @@ class WiperApp(QWidget):
             QMessageBox.warning(self, "Error", "No drive selected")
             return
 
-        confirm = QMessageBox.question(
-            self,
-            "Confirm Wipe",
-            f"Are you sure you want to wipe {drive_info['name']} "
-            f"({drive_info['media_type']})?\n"
-            f"NIST method will be auto-selected."
-        )
-        if confirm != QMessageBox.Yes:
-            return
+        # confirm = QMessageBox.question(
+        #     self,
+        #     "Confirm Wipe",
+        #     f"Are you sure you want to wipe {drive_info['name']} "
+        #     f"({drive_info['media_type']})?\n"
+        #     f"NIST method will be auto-selected."
+        # )
+        # if confirm != QMessageBox.Yes:
+        #     return
 
         self.progress_bar.show()
         self.log_box.clear()
