@@ -1,0 +1,32 @@
+{
+  "entries": [
+    {
+      "event": "start_wipe",
+      "drive": "sdb",
+      "device_path": "/dev/sdb",
+      "serial": "VB4a496d5f-519d20bd",
+      "media_type": "HDD",
+      "method_name": "Overwrite 1-pass",
+      "timestamp": "20250909_221758",
+      "chain_hash": "981b9be92db07b1734ee6ec6f0c6344d5975b8ec9e04baa470521ca4409a7b27"
+    },
+    {
+      "event": "wipe_progress_line",
+      "line": "sudo: nwipe: command not found",
+      "timestamp": "20250909_221849",
+      "chain_hash": "7490c53ef87facaae755e6ff1e04fb682cd2be8dcd3be62e1fc12c1d2d2f9ed2"
+    },
+    {
+      "event": "sector_samples",
+      "samples": [],
+      "timestamp": "20250909_221849",
+      "chain_hash": "e426c2b7d17e6e2b9c41cabcee928df72117ffe298e7e7530d335551b8eed317"
+    },
+    {
+      "event": "end_wipe",
+      "timestamp": "20250909_221849",
+      "success": false,
+      "chain_hash": "fabe2c9fec198edcf7b11d9e3a18990ff5d344f6e31ceacd46f2ce148a6f1019"
+    }
+  ]
+}

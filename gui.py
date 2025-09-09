@@ -1,4 +1,3 @@
-# gui.py
 import sys
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QPushButton, QLabel, QVBoxLayout,
@@ -6,8 +5,6 @@ from PyQt5.QtWidgets import (
 )
 from drive_manager import list_drives
 from wipe_manager import WipeThread
-# import report_generator
-
 
 class WiperApp(QWidget):
     def __init__(self):
@@ -55,7 +52,7 @@ class WiperApp(QWidget):
             if "error" in d:
                 self.drive_dropdown.addItem(d["error"], None)
                 continue
-            display = f"{d['name']} | {d['size']} | {d['model']} | {d['media_type']}"
+            display = f"{d['name']} | {d['size']} | {d['model']} | {d['media_type']} | {d.get('serial','')}"
             self.drive_dropdown.addItem(display, d)
 
     def start_wipe(self):
@@ -64,6 +61,7 @@ class WiperApp(QWidget):
             QMessageBox.warning(self, "Error", "No drive selected")
             return
 
+        # Confirm (uncomment if desired)
         # confirm = QMessageBox.question(
         #     self,
         #     "Confirm Wipe",
@@ -78,32 +76,67 @@ class WiperApp(QWidget):
         self.log_box.clear()
 
         # Start wipe thread with auto method (decided inside wipe_manager)
-        self.thread = WipeThread(drive_info["name"], drive_info["media_type"])
+        # The finished signal now returns a rich result tuple/object
+        self.thread = WipeThread(drive_info["name"], drive_info["media_type"], drive_info.get("serial"))
         self.thread.progress.connect(self.update_log)
         self.thread.finished.connect(self.wipe_done)
         self.thread.start()
 
     def update_log(self, line):
+        # May receive long strings; ensure UI remains responsive
         self.log_box.append(line)
 
     def wipe_done(self, result):
+        """Result is a dict:
+           {
+             success: bool,
+             method: str,
+             pdf: str,
+             json: str,
+             final_hash: str,
+             txid: str or None,
+             log_path: str
+           }
+        """
         self.progress_bar.hide()
 
         drive = self.drive_dropdown.currentData()
-        success, method, pdf, js = result  # thread returns tuple
+        if result is None:
+            QMessageBox.critical(self, "Error", "Wipe thread failed unexpectedly.")
+            return
+
+        success = result.get("success", False)
+        method = result.get("method", "Unknown")
+        pdf = result.get("pdf")
+        js = result.get("json")
+        final_hash = result.get("final_hash")
+        txid = result.get("txid")
 
         msg = QMessageBox()
         if success:
-            msg.setText(f"✅ Wipe completed.\n"
-                        f"Drive: {drive['name']}\n"
-                        f"Method: {method}\n"
-                        f"Reports:\n📄 {pdf}\n📝 {js}")
+            body = (f"✅ Wipe completed.\n"
+                    f"Drive: {drive['name']}\n"
+                    f"Method: {method}\n\n"
+                    f"Reports:\n📄 {pdf}\n📝 {js}\n\n"
+                    f"Verification Hash:\n{final_hash}\n")
+            if txid:
+                body += f"\nBlockchain TxID / Ledger ID:\n{txid}"
+            msg.setText(body)
         else:
-            msg.setText(f"❌ Wipe failed for {drive['name']}.\n"
-                        f"Reports:\n📄 {pdf}\n📝 {js}")
+            body = (f"❌ Wipe failed for {drive['name']}.\n"
+                    f"Method: {method}\n\n"
+                    f"Reports (if any):\n📄 {pdf}\n📝 {js}\n\n"
+                    f"Verification Hash:\n{final_hash if final_hash else 'N/A'}")
+            if txid:
+                body += f"\nLedger ID (partial): {txid}"
+            msg.setText(body)
         msg.exec_()
 
         self.log_box.append("=== Wipe Done ===")
+        if final_hash:
+            self.log_box.append(f"Verification Hash: {final_hash}")
+        if txid:
+            self.log_box.append(f"Ledger TX/ID: {txid}")
 
 
 if __name__ == "__main__":
