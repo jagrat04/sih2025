@@ -1,0 +1,382 @@
+{
+  "log_entries": [
+    {
+      "event": "start_wipe",
+      "drive": "sdd",
+      "device_path": "/dev/sdd",
+      "serial": "VB565020c0-f2220361",
+      "media_type": "HDD",
+      "method_name": "Overwrite 1-pass (NIST 800-88 Clear)",
+      "timestamp": 1757577166.404793,
+      "chain_hash": "9a1bcc0bc5470813edffd29ce38780075f19d4a913f7110a8fe6cd152a7fdb05"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54] warning: Command not found. Install smartmontools !",
+      "timestamp": 1757577174.4704766,
+      "chain_hash": "39a63906dc3e3b08ff3d75728101fe5772d76ba837954547e3e1bc931f4ec65c"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: Found /dev/sdd,  ATA, VBOX HARDDISK,   4 MB, S/N=VB565020c0-f2220361",
+      "timestamp": 1757577174.5137148,
+      "chain_hash": "730d2feee58f6f5f517ff316f41af0fbfbb4f67bbdd4006a88a59971af9e3e0d"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: bios-version = VirtualBox",
+      "timestamp": 1757577174.5305383,
+      "chain_hash": "5437aeb17f4694f2ebdb20c333a79fb1403c568d65cc650e962143e57fd5e940"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: bios-release-date = 12/01/2006",
+      "timestamp": 1757577174.547789,
+      "chain_hash": "ba1aaef5a0c07e8fec2691bd9fb8f67547d5752d608cbd74f74b5943b1523dfe"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: system-manufacturer = innotek GmbH",
+      "timestamp": 1757577174.5751011,
+      "chain_hash": "0096af34d30a9c4faf77ce6c6b10e0987a67c65ea657dce900f425d4302f4bb6"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: system-product-name = VirtualBox",
+      "timestamp": 1757577174.5947852,
+      "chain_hash": "7b0af1b9ad1cca4c2cff20633c0e7492792846cfc09a5662b3fd56ab2e31f07c"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: system-version = 1.2",
+      "timestamp": 1757577174.612408,
+      "chain_hash": "5b307ca5dd2f368fbf1c487e99da8315f62034b347e97c8fe1a07fc443d16e76"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: system-serial-number = VirtualBox-260d30fb-5c78-402b-9c99-a2737c39aee5",
+      "timestamp": 1757577174.6345088,
+      "chain_hash": "0141bb9eebceaaec4b3c9e619e8daa542a9f5c398dde4cdaba05d6d0ff35c30b"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: system-uuid = fb300d26-785c-2b40-9c99-a2737c39aee5",
+      "timestamp": 1757577174.6511385,
+      "chain_hash": "2c40b9b69263f06560bd310e02649a2fd157eedf9ee5c82c221412b3d0951ed0"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: baseboard-manufacturer = Oracle Corporation",
+      "timestamp": 1757577174.666025,
+      "chain_hash": "c53883ba1970a63d11a41f9e6e30f41a5ccef98fb7ff06890592e14a4754aac4"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: baseboard-product-name = VirtualBox",
+      "timestamp": 1757577174.6818886,
+      "chain_hash": "5c09fae4815bda03189b326652b40c7253b2a02124fe0658baf4865c8b72792c"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: baseboard-version = 1.2",
+      "timestamp": 1757577174.6968873,
+      "chain_hash": "a8ed2e7df6b46da56d95e52990e40d950dc04eab00b53579adfcf5a0e8ee6252"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: baseboard-serial-number = 0",
+      "timestamp": 1757577174.7148998,
+      "chain_hash": "44c54182b408b5a9ba92e40a6c8be1f2e99be38ab41246d47ed619d2612f2c48"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: baseboard-asset-tag = Not Specified",
+      "timestamp": 1757577174.7288444,
+      "chain_hash": "7e0eb4e2b99ac87f27ab11ab7b18f30929b392a58352b921f0c5c5df7d148e58"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: chassis-manufacturer = Oracle Corporation",
+      "timestamp": 1757577174.742683,
+      "chain_hash": "9a0b8b0c4fef6ce97cf488630d76f464211109ce8b9c4e2a1f301d0b3f1ea8e9"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: chassis-type = Other",
+      "timestamp": 1757577174.757843,
+      "chain_hash": "66fb54934a51498237c17eb25737fce27b9b21aa804fe61c6af6f5c515f01fbc"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: chassis-version = Not Specified",
+      "timestamp": 1757577174.7719595,
+      "chain_hash": "0a01bbc10af713c4da74131fc6c53c4bf6e169362472b17d716cb01351d9f9df"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: chassis-serial-number = Not Specified",
+      "timestamp": 1757577174.7866478,
+      "chain_hash": "51de8a9e20396d01791103aa4d0e710e460af2f2e9f8dc4c1bba949eaf05659f"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: chassis-asset-tag = Not Specified",
+      "timestamp": 1757577174.8480737,
+      "chain_hash": "1261c129a237a3461cc9edb0c4525fe85b0aa559d81eeb58489a3a00a4b12480"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: Opened entropy source '/dev/urandom'.",
+      "timestamp": 1757577174.848191,
+      "chain_hash": "0439be809690a8b89463b4978f9ea7f3b09fe378341a45922faf20e8d84344f6"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: Program options are set as follows...",
+      "timestamp": 1757577174.8482192,
+      "chain_hash": "4cfc293d5174485ccf5a031e2ee5d5441f2d4ebbd1d21e0c733c41fec5c98cfe"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice:   autonuke = 1 (on)",
+      "timestamp": 1757577174.8482394,
+      "chain_hash": "d2cc395342bac7ae7c9ad604b31144704aa9c0fe1b997c070c01fbf2b02a6861"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice:   autopoweroff = 0 (off)",
+      "timestamp": 1757577174.8482592,
+      "chain_hash": "c54bb4954ada1ba7e2d0601a6c4a50d0370137c62b188d14b67c1822ee08794e"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice:   do not wait for a key before exiting",
+      "timestamp": 1757577174.8482964,
+      "chain_hash": "35c2a0bbc07456f0f75a464c2efa2a9f2af957e194f23d1a63ad8b88497cc49a"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice:   do not show GUI interface",
+      "timestamp": 1757577174.8483167,
+      "chain_hash": "07a156a643879dbf2d589fde0d532672230bfc48d12dd2b02ff97e1c91a7e5b4"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice:   banner   = nwipe 0.31",
+      "timestamp": 1757577174.84901,
+      "chain_hash": "1d95fc544e6fdfcf93f1cabc1ec7ecde4dd8f873f78135fd2a1f2d83da6e45b4"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice:   prng     = Mersenne Twister",
+      "timestamp": 1757577174.8490658,
+      "chain_hash": "32e14e2daec3fd545ca61cc6c3a3f846fda0242d71a47d4f43dedb5091d89a1d"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice:   method   = Zero Fill",
+      "timestamp": 1757577174.849114,
+      "chain_hash": "49b3ba215c9ae8ad48db5e2a062cc7cf798a3e8da9e3ffb9eb608711d623e186"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice:   rounds   = 1",
+      "timestamp": 1757577174.8491356,
+      "chain_hash": "1143348d2541619eca27d9ff6b7cf0677b1426a15385bc7b057513b911b13e0d"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice:   sync     = 100000",
+      "timestamp": 1757577174.8491976,
+      "chain_hash": "ae7a1ef7658b41f16410a3ab947e547de8955a552d3e0049d58fb957eebab1c5"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice:   verify   = 1 (last pass)",
+      "timestamp": 1757577174.8492193,
+      "chain_hash": "7843baf8c01bf921ad63824b449af52717fccacce80ad34d3054e6436437ec3c"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: /dev/sdd has serial number VB565020c0-f2220361",
+      "timestamp": 1757577174.8492374,
+      "chain_hash": "64d60a50902edaee16f0716611f415168ec417927e4ce4b736893a862d0565d5"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: /dev/sdd, sect/blk/dev 512/4096/4194304",
+      "timestamp": 1757577174.8493302,
+      "chain_hash": "c37ec6b4da88c31632d4eaf97fd3f43c7d101cf1a80d9f5a92679153f9b34e34"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: Invoking method 'Zero Fill' on /dev/sdd",
+      "timestamp": 1757577174.8493662,
+      "chain_hash": "fb02d4aeca8c21f20e52d17a458cdf2a5e76bff165e8ad92da7d9474edbf0523"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: Starting round 1 of 1 on /dev/sdd",
+      "timestamp": 1757577174.8493867,
+      "chain_hash": "45960c7d5366756155e9bc0b9dd12a98d9a72fe4adfbd85db37fc330f8ef56d3"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: Starting pass 1/1, round 1/1, on /dev/sdd",
+      "timestamp": 1757577174.9276586,
+      "chain_hash": "7dc931512bd18483d2e5256c94af8d5be5a95068430adf0036a5f32a6483c65d"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: 4194304 bytes written to /dev/sdd",
+      "timestamp": 1757577174.9301202,
+      "chain_hash": "e07589ebbe2a43b853c7688f3a7936f119ced68c5523f775f6aae622d850b261"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: Finished pass 1/1, round 1/1, on /dev/sdd",
+      "timestamp": 1757577174.9308553,
+      "chain_hash": "1d2f8806046158c45c09309dc66779aea7c4069d9efc44da36c71e2e15aecc60"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: Finished final round 1 of 1 on /dev/sdd",
+      "timestamp": 1757577174.930948,
+      "chain_hash": "2d9fe620117a02ecd95927b3fb785f26e2f25788c0fd803476d191eee146dd71"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: Blanking device /dev/sdd",
+      "timestamp": 1757577174.970727,
+      "chain_hash": "e8a7383a31d2ea68349087ae59fb3a8224b77f3900167d07c3fed7bd3d1b7e79"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: 4194304 bytes written to /dev/sdd",
+      "timestamp": 1757577174.9720814,
+      "chain_hash": "d6ae0a258159ee22d4e0518f2adf8dc34d9575cf4dccb6354d86ec4eb8f4b90c"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: Verifying that /dev/sdd is empty.",
+      "timestamp": 1757577174.9786034,
+      "chain_hash": "d888e724ba0f2a68b9901d9094aaf0e4bf66b65486c678c0de7309f79313d800"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: 4194304 bytes read from /dev/sdd",
+      "timestamp": 1757577174.9787872,
+      "chain_hash": "cc48faad50f2cbd5d96c09656a9052f4621fc3d14c44ff61ddf6a0f7513c3c52"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: [SUCCESS] Verified that /dev/sdd is empty.",
+      "timestamp": 1757577174.9789364,
+      "chain_hash": "d4ef65084a1bfe0f36b85a3afd2596057288c5ddc3eab1fefab73cb4d15f74eb"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:54]  notice: [SUCCESS] Blanked device /dev/sdd",
+      "timestamp": 1757577175.8540647,
+      "chain_hash": "5b41d017dc1b4b61ee45bf8d6a68ed4018549e069c838ff27a87d9a065aa1450"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "******************************** Error Summary *********************************",
+      "timestamp": 1757577175.8541842,
+      "chain_hash": "62368081b6d4de1ef71fc6f3fd87ccb9500566a019f4a314638965473fcb5aaf"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "! Device | Pass Errors | Verifications Errors |",
+      "timestamp": 1757577175.8542204,
+      "chain_hash": "23a0dc25876079a0c21a01caeb71f962d22787e60348f7a239f89233db032f3f"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "--------------------------------------------------------------------------------",
+      "timestamp": 1757577175.8542483,
+      "chain_hash": "41860730fa8d133a78c7286380ce5ee7290a6b0caec7a96c04b9bf6704fab858"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "sdd |           0 |                    0 |",
+      "timestamp": 1757577175.8542736,
+      "chain_hash": "60d793b741d370c3d35be8513baa9cbfdeff481470d71dfd2f99a2b4516f9174"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "********************************************************************************",
+      "timestamp": 1757577175.8542984,
+      "chain_hash": "43fa7251d659fcd1c75b5b9ef993a75efea4743195e9fe239117f89700d3cbdd"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "********************************* Drive Status *********************************",
+      "timestamp": 1757577175.8543234,
+      "chain_hash": "3e237430d403be096e01589140a47f859bb1978a093390e2779d4504ebc01671"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "! Device | Status | Thru-put | HH:MM:SS | Model/Serial Number",
+      "timestamp": 1757577175.8543472,
+      "chain_hash": "c53e7bb3fca14721dfaf5d2b0285d230e12b0e273a50edc68e88cbe3e565d421"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "--------------------------------------------------------------------------------",
+      "timestamp": 1757577175.8543723,
+      "chain_hash": "e2842d2392a2f78f38bd420cdbacba0725abcd34c1a93b467a6ecb2585bdb1f5"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "sdd | Erased |   0 B/s | 00:00:00 | VBOX HARDDISK/VB565020c0-f2220361",
+      "timestamp": 1757577175.854398,
+      "chain_hash": "eba282cd4972a70e330ee8f84d05c54d6a291ba613fd23b34537fb31e5d91fac"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "--------------------------------------------------------------------------------",
+      "timestamp": 1757577175.854422,
+      "chain_hash": "a67550fee891806dc90189822b7f004a52b45f03897f0fc73daf143b08504957"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:55] Total Throughput   0 B/s, Zero Fill, 1R+B+VL",
+      "timestamp": 1757577175.8544455,
+      "chain_hash": "6f987001ed92e95188847e50508171c65f6f41c34cb8ae021ed6c69830910070"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "********************************************************************************",
+      "timestamp": 1757577175.854469,
+      "chain_hash": "33756a497dc9c01486489ef59b998406a4ef828721bc23733f95d8e78474b344"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:55]    info: Nwipe successfully completed. See summary table for details.",
+      "timestamp": 1757577175.8544931,
+      "chain_hash": "3f88bc8459ad056d1a085d0e3cdc710d0696f417d62f5afea3d2d040c76edc73"
+    },
+    {
+      "event": "wipe_progress",
+      "line": "[2025/09/11 13:22:55]    info: Nwipe successfully completed. See summary table for details.",
+      "timestamp": 1757577175.8545194,
+      "chain_hash": "10c3a7130e30e4170637a50f3be4d37d89b129b82d62a84353a14855989952d7"
+    },
+    {
+      "event": "sector_samples",
+      "samples": [],
+      "timestamp": 1757577175.8750834,
+      "chain_hash": "d5cf7b1314ebd5c492c2664213e9f21437629d0952be15fc646a9fb2c97b816f"
+    },
+    {
+      "event": "end_wipe",
+      "timestamp": 1757577175.885128,
+      "success": true,
+      "final_hash": "d5cf7b1314ebd5c492c2664213e9f21437629d0952be15fc646a9fb2c97b816f",
+      "txid": "d5cf7b1314ebd5c492c2664213e9f21437629d0952be15fc646a9fb2c97b816f",
+      "chain_hash": "5c5c9b6468f6896371480de394e6a5ac58057258d80695880a170328fd8484ce"
+    }
+  ]
+}

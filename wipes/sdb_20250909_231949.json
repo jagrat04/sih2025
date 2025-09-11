@@ -1,0 +1,8 @@
+{
+    "drive": "sdb",
+    "wipe_method": "NIST 800-88 Clear",
+    "final_hash": "dummyhash123",
+    "ledger_txid": "txid123",
+    "timestamp": "20250909_231949",
+    "status": "Wipe completed successfully"
+}

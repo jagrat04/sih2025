@@ -1,12 +1,13 @@
-# gui.py
 import sys
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QPushButton, QLabel, QVBoxLayout,
     QMessageBox, QTextEdit, QComboBox, QProgressBar
 )
+from PyQt5.QtGui import QFont # <--- FIX: Import QFont here
 from drive_manager import list_drives
 from wipe_manager import WipeThread
-# import report_generator
+from certificate_viewer import CertificateViewer # Import the new viewer
+from PyQt5.QtWidgets import QListWidget, QListWidgetItem
 
 
 class WiperApp(QWidget):
@@ -20,9 +21,15 @@ class WiperApp(QWidget):
         self.label = QLabel("Select a drive to wipe (method auto-selected per NIST):")
         layout.addWidget(self.label)
 
-        # Drive dropdown
-        self.drive_dropdown = QComboBox()
-        layout.addWidget(self.drive_dropdown)
+        self.drive_list = QListWidget()
+        self.drive_list.setSelectionMode(QListWidget.MultiSelection)
+        layout.addWidget(self.drive_list)
+                
+        # Add a dummy drive for testing without root
+        dummy_item = QListWidgetItem("DUMMY (5MB file for testing)")
+        dummy_item.setData(1000, {"name": "dummy", "media_type": "Dummy Test", "serial": "DUMMY-001"})
+        self.drive_list.addItem(dummy_item)
+
 
         # Refresh button
         self.refresh_button = QPushButton("Refresh Drives")
@@ -43,67 +50,119 @@ class WiperApp(QWidget):
         # Log box
         self.log_box = QTextEdit()
         self.log_box.setReadOnly(True)
+        self.log_box.setFont(QFont("Courier New", 9))
         layout.addWidget(self.log_box)
 
         self.setLayout(layout)
         self.load_drives()
+        self.thread = None # To hold the worker thread
 
+   
     def load_drives(self):
+    # Keep dummy, clear rest
+        while self.drive_list.count() > 1:
+            self.drive_list.takeItem(1)
+
         drives = list_drives()
-        self.drive_dropdown.clear()
         for d in drives:
-            if "error" in d:
-                self.drive_dropdown.addItem(d["error"], None)
-                continue
-            display = f"{d['name']} | {d['size']} | {d['model']} | {d['media_type']}"
-            self.drive_dropdown.addItem(display, d)
+            display = d.get("error") or f"{d['name']} | {d['size']} | {d['model']} | {d['media_type']} | {d.get('serial','')}"
+            item = QListWidgetItem(display)
+            item.setData(1000, d)
+            self.drive_list.addItem(item)
 
     def start_wipe(self):
-        drive_info = self.drive_dropdown.currentData()
-        if not drive_info:
-            QMessageBox.warning(self, "Error", "No drive selected")
+        selected_items = self.drive_list.selectedItems()
+        if not selected_items:
+            QMessageBox.warning(self, "Error", "No drive(s) selected")
             return
 
-        # confirm = QMessageBox.question(
-        #     self,
-        #     "Confirm Wipe",
-        #     f"Are you sure you want to wipe {drive_info['name']} "
-        #     f"({drive_info['media_type']})?\n"
-        #     f"NIST method will be auto-selected."
-        # )
-        # if confirm != QMessageBox.Yes:
-        #     return
+        confirm = QMessageBox.question(
+            self,
+            "Confirm Wipe",
+            "!!! ALL DATA WILL BE PERMANENTLY DESTROYED ON SELECTED DRIVES !!!\n\n"
+            "Are you sure?",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+        )
+        if confirm != QMessageBox.Yes:
+            return
 
         self.progress_bar.show()
         self.log_box.clear()
+        self.wipe_button.setEnabled(False)
+        self.refresh_button.setEnabled(False)
 
-        # Start wipe thread with auto method (decided inside wipe_manager)
-        self.thread = WipeThread(drive_info["name"], drive_info["media_type"])
-        self.thread.progress.connect(self.update_log)
-        self.thread.finished.connect(self.wipe_done)
-        self.thread.start()
+        self.threads = []  # Track multiple threads
+
+        for item in selected_items:
+            drive_info = item.data(1000)
+            thread = WipeThread(
+                drive_info["name"],
+                drive_info["media_type"],
+                drive_info.get("serial")
+            )
+            thread.progress.connect(lambda line, d=drive_info["name"]: self.update_log(f"[{d}] {line}"))
+            thread.finished.connect(self.thread_done)
+            self.threads.append(thread)
+            thread.start()
+
+        self.remaining_threads = len(self.threads)
+
 
     def update_log(self, line):
         self.log_box.append(line)
+        self.log_box.verticalScrollBar().setValue(self.log_box.verticalScrollBar().maximum())
+
 
     def wipe_done(self, result):
+        """
+        This function is now more robust. It provides detailed feedback if
+        certificate generation fails, otherwise it opens the viewer.
+        """
         self.progress_bar.hide()
+        self.wipe_button.setEnabled(True)
+        self.refresh_button.setEnabled(True)
+        
+        self.log_box.append("\n=== WIPE PROCESS FINISHED ===")
 
-        drive = self.drive_dropdown.currentData()
-        success, method, pdf, js = result  # thread returns tuple
+        # More detailed check and logging
+        if result is None:
+            self.log_box.append("ERROR: Wipe thread returned no result object.")
+            QMessageBox.critical(self, "Error", "Wipe thread failed unexpectedly.")
+            return
 
-        msg = QMessageBox()
-        if success:
-            msg.setText(f"✅ Wipe completed.\n"
-                        f"Drive: {drive['name']}\n"
-                        f"Method: {method}\n"
-                        f"Reports:\n📄 {pdf}\n📝 {js}")
+        if not result.get("success", False):
+             self.log_box.append("WARNING: Wipe process failed. Check logs above for details.")
+
+        cert_data = result.get("cert_data")
+        
+        if not cert_data:
+             self.log_box.append("\nERROR: Certificate data was not generated by the wipe thread.")
+             self.log_box.append("This could be due to a file permission error or an issue in the report generator.")
+             QMessageBox.critical(self, "Error", "Wipe completed, but failed to generate a valid certificate. Please check the log for errors.")
+             return
+
+        # Show the certificate viewer dialog if all checks pass
+        self.log_box.append("Wipe successful. Opening certificate viewer...")
+        cert_viewer = CertificateViewer(result, self)
+        cert_viewer.exec_()
+    
+    def thread_done(self, result):
+        self.remaining_threads -= 1
+        if not result.get("success", False):
+            self.log_box.append(f"[{result.get('drive','?')}] WARNING: Wipe failed.")
+
+        cert_data = result.get("cert_data")
+        if cert_data:
+            self.log_box.append(f"[{result.get('drive','?')}] Certificate generated successfully.")
         else:
-            msg.setText(f"❌ Wipe failed for {drive['name']}.\n"
-                        f"Reports:\n📄 {pdf}\n📝 {js}")
-        msg.exec_()
+            self.log_box.append(f"[{result.get('drive','?')}] ERROR: No certificate generated.")
 
-        self.log_box.append("=== Wipe Done ===")
+        # When all threads are done, re-enable UI
+        if self.remaining_threads == 0:
+            self.progress_bar.hide()
+            self.wipe_button.setEnabled(True)
+            self.refresh_button.setEnabled(True)
+            self.log_box.append("\n=== ALL WIPE PROCESSES FINISHED ===")
 
 
 if __name__ == "__main__":
@@ -111,3 +170,4 @@ if __name__ == "__main__":
     window = WiperApp()
     window.show()
     sys.exit(app.exec_())
+
