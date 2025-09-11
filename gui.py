@@ -26,7 +26,9 @@ class WiperApp(QWidget):
         layout.addWidget(self.drive_list)
                 
         # Add a dummy drive for testing without root
-        self.drive_dropdown.addItem("DUMMY (5MB file for testing)", {"name": "dummy", "media_type": "Dummy Test", "serial": "DUMMY-001"})
+        dummy_item = QListWidgetItem("DUMMY (5MB file for testing)")
+        dummy_item.setData(1000, {"name": "dummy", "media_type": "Dummy Test", "serial": "DUMMY-001"})
+        self.drive_list.addItem(dummy_item)
 
 
         # Refresh button
@@ -55,20 +57,18 @@ class WiperApp(QWidget):
         self.load_drives()
         self.thread = None # To hold the worker thread
 
+   
     def load_drives(self):
-        # We keep the dummy entry, so we clear from index 1
-        # This prevents removing the dummy drive on refresh
-        def load_drives(self):
-        # Keep dummy, clear rest
-            while self.drive_list.count() > 1:
-                self.drive_list.takeItem(1)
+    # Keep dummy, clear rest
+        while self.drive_list.count() > 1:
+            self.drive_list.takeItem(1)
 
-            drives = list_drives()
-            for d in drives:
-                display = d.get("error") or f"{d['name']} | {d['size']} | {d['model']} | {d['media_type']} | {d.get('serial','')}"
-                item = QListWidgetItem(display)
-                item.setData(1000, d)
-                self.drive_list.addItem(item)
+        drives = list_drives()
+        for d in drives:
+            display = d.get("error") or f"{d['name']} | {d['size']} | {d['model']} | {d['media_type']} | {d.get('serial','')}"
+            item = QListWidgetItem(display)
+            item.setData(1000, d)
+            self.drive_list.addItem(item)
 
     def start_wipe(self):
         selected_items = self.drive_list.selectedItems()
