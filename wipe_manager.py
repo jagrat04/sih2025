@@ -11,55 +11,18 @@ from drive_manager import get_drive_type, list_drives
 from report_generator import generate_report_and_sign
 from blockchain_connector import anchor_hash
 
-WIPE_METHODS = {
-    "HDD": {
-        "method": "Overwrite 1-pass",
-        "command": lambda dev: ["sudo", "nwipe", "--method=zero", dev]
-    },
-    "SATA SSD": {
-        "method": "Secure Erase",
-        "command": lambda dev: ["sudo", "hdparm", "--user-master", "u", "--security-set-pass", "p", dev,
-                                "&&", "sudo", "hdparm", "--user-master", "u", "--security-erase", "p", dev]
-    },
-    "NVMe SSD": {
-        "method": "NVMe Format",
-        "command": lambda dev: ["sudo", "nvme", "format", dev]
-    },
-    "USB": {
-        "method": "Overwrite",
-        "command": lambda dev: ["sudo", "dd", "if=/dev/zero", f"of={dev}", "bs=64M", "status=progress"]
-    },
-    "SD Card": {
-        "method": "Overwrite",
-        "command": lambda dev: ["sudo", "dd", "if=/dev/zero", f"of={dev}", "bs=64M", "status=progress"]
-    },
-    "Android (encrypted)": {
-        "method": "Crypto Erase",
-        "command": lambda dev: ["echo", "Factory reset required (key discard)"]
-    },
-    "Android (unencrypted)": {
-        "method": "Overwrite",
-        "command": lambda dev: ["sudo", "fastboot", "erase", "userdata"]
-    },
-    # ✅ NEW DUMMY TEST ENTRY
-    "Dummy Test": {
-        "method": "Dummy Overwrite",
-        "command": lambda dev: ["dd", "if=/dev/zero", "of=dummy_test.img", "bs=1M", "count=5", "status=progress"]
-    }
-}
-
-# NIST mapping table
+# NIST mapping table - Corrected to include --nogui for nwipe
 NIST_METHODS = {
     "HDD": (
-        "Overwrite 1-pass",
-        ["sudo", "nwipe", "--autonuke", "--method=zero"]
+        "Overwrite 1-pass (NIST 800-88 Clear)",
+        ["sudo", "nwipe", "--autonuke", "--nogui", "--method=zero"]
     ),
     "SATA SSD": (
-        "Secure Erase",
+        "Secure Erase (NIST 800-88 Purge)",
         ["sudo", "hdparm", "--user-master", "u", "--security-erase", "p"]
     ),
     "NVMe M.2 SSD": (
-        "NVMe Format",
+        "NVMe Format (NIST 800-88 Purge)",
         ["sudo", "nvme", "format"]
     ),
     "USB Thumb Drive": (
@@ -70,13 +33,13 @@ NIST_METHODS = {
         "Overwrite",
         ["sudo", "dd", "if=/dev/zero", "bs=64M", "status=progress"]
     ),
-    "Dummy Test": (  # ✅ also map dummy into NIST
+    "Dummy Test": (
         "Dummy Overwrite",
         ["dd", "if=/dev/zero", "of=dummy_test.img", "bs=1M", "count=5", "status=progress"]
     ),
     "Unknown": (
-        "Default Overwrite",
-        ["sudo", "nwipe", "--autonuke", "--method=zero"]
+        "Default Overwrite (NIST 800-88 Clear)",
+        ["sudo", "nwipe", "--autonuke", "--nogui", "--method=zero"]
     ),
 }
 
@@ -93,21 +56,25 @@ class WipeThread(QThread):
         self.sample_count = sample_count
         self.out_dir = os.path.abspath("wipes")
         os.makedirs(self.out_dir, exist_ok=True)
+        # Create dummy file if it doesn't exist for the test option
+        if self.media_type == "Dummy Test" and not os.path.exists("dummy_test.img"):
+            with open("dummy_test.img", "wb") as f:
+                f.truncate(5 * 1024 * 1024) # 5MB
 
     def _device_path(self):
         if self.media_type == "Dummy Test":
-            # ✅ point to dummy file instead of /dev/ drive
-            return "dummy_test.img"
+            return os.path.abspath("dummy_test.img")
         return f"/dev/{self.drive}"
 
     def _device_size_bytes(self):
         try:
-            if self.media_type == "Dummy Test":
-                return os.path.getsize("dummy_test.img")
-            out = subprocess.check_output(["blockdev", "--getsize64", self._device_path()], text=True).strip()
-            return int(out)
+            return os.path.getsize(self._device_path())
         except Exception:
-            return None
+            try:
+                out = subprocess.check_output(["blockdev", "--getsize64", self._device_path()], text=True).strip()
+                return int(out)
+            except Exception:
+                return None
 
     def _chain_hash(self, prev_hash_hex, entry_bytes):
         h = hashlib.sha256()
@@ -121,15 +88,19 @@ class WipeThread(QThread):
             return samples
         sector_size = 512
         total_sectors = device_size_bytes // sector_size
-        if total_sectors <= 0:
+        if total_sectors <= 1:
             return samples
         picks = set()
+        # Ensure we don't try to sample more sectors than exist
+        count = min(count, total_sectors)
+        
         attempts = 0
-        while len(picks) < count and attempts < count * 10:
-            candidate = random.randint(1, max(1, total_sectors - 1))
+        while len(picks) < count and attempts < count * 20:
+            candidate = random.randint(0, total_sectors - 1)
             picks.add(candidate)
             attempts += 1
-        for sector in sorted(picks):
+            
+        for sector in sorted(list(picks)):
             try:
                 with open(device_path, "rb") as f:
                     f.seek(sector * sector_size)
@@ -151,21 +122,29 @@ class WipeThread(QThread):
     def run(self):
         result = {
             "success": False,
-            "method": None,
             "pdf": None,
             "json": None,
-            "final_hash": None,
-            "txid": None,
+            "cert_data": None,
             "log_path": None
         }
 
         device_path = self._device_path()
         method_name, base_cmd = NIST_METHODS.get(self.media_type, NIST_METHODS["Unknown"])
-
-        if base_cmd[0] in ("sudo",):
-            cmd = base_cmd + [device_path]
+        
+        # FIX: Correctly construct the command for all cases
+        cmd = list(base_cmd)
+        is_dd_command = 'dd' in cmd
+        
+        if is_dd_command:
+             # dd command needs its 'of=' part constructed with the full path
+             for i, part in enumerate(cmd):
+                 if part.startswith('of='):
+                     cmd[i] = f"of={device_path}"
+                     break
         else:
-            cmd = base_cmd + [device_path]
+            # Most other commands just append the device path at the end
+            cmd.append(device_path)
+
 
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         base_name = f"{self.drive}_{timestamp}"
@@ -173,7 +152,7 @@ class WipeThread(QThread):
         result["log_path"] = log_file
 
         log_entries = []
-        prev_hash = ""
+        prev_hash = hashlib.sha256(b"genesis").hexdigest()
 
         start_entry = {
             "event": "start_wipe",
@@ -182,123 +161,101 @@ class WipeThread(QThread):
             "serial": self.serial,
             "media_type": self.media_type,
             "method_name": method_name,
-            "timestamp": timestamp
+            "timestamp": time.time()
         }
         entry_bytes = json.dumps(start_entry, sort_keys=True).encode("utf-8")
         prev_hash = self._chain_hash(prev_hash, entry_bytes)
         start_entry["chain_hash"] = prev_hash
         log_entries.append(start_entry)
 
-        self.progress.emit(f"Using NIST method: {method_name}")
+        self.progress.emit(f"Using method: {method_name}")
         self.progress.emit(f"Running command: {' '.join(cmd)}")
+        
+        proc = None
         try:
-            if any("&&" in str(x) for x in cmd):
-                cmd_str = " ".join(cmd)
-                proc = subprocess.Popen(cmd_str, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, shell=True)
-            else:
-                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            # Using shell=True for commands with '&&' might be risky, but needed for hdparm chain
+            use_shell = "&&" in " ".join(cmd)
+            proc = subprocess.Popen(
+                " ".join(cmd) if use_shell else cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                shell=use_shell
+            )
 
-            while True:
-                line = proc.stdout.readline()
-                if not line and proc.poll() is not None:
-                    break
-                if line:
-                    ln = line.rstrip("\n")
+            for line in iter(proc.stdout.readline, ''):
+                ln = line.strip()
+                if ln:
                     self.progress.emit(ln)
-                    log_entry = {
-                        "event": "wipe_progress_line",
-                        "line": ln,
-                        "timestamp": time.strftime("%Y%m%d_%H%M%S")
-                    }
+                    log_entry = { "event": "wipe_progress", "line": ln, "timestamp": time.time() }
                     eb = json.dumps(log_entry, sort_keys=True).encode("utf-8")
                     prev_hash = self._chain_hash(prev_hash, eb)
                     log_entry["chain_hash"] = prev_hash
                     log_entries.append(log_entry)
-
+            
+            proc.stdout.close()
             returncode = proc.wait()
             success = (returncode == 0)
             result["success"] = success
             self.progress.emit(f"Process finished with return code: {returncode}")
+        
         except Exception as e:
             self.progress.emit(f"Error running wipe command: {e}")
-            log_entry = {
-                "event": "wipe_error",
-                "error": str(e),
-                "timestamp": time.strftime("%Y%m%d_%H%M%S")
-            }
+            log_entry = { "event": "wipe_error", "error": str(e), "timestamp": time.time() }
             eb = json.dumps(log_entry, sort_keys=True).encode("utf-8")
             prev_hash = self._chain_hash(prev_hash, eb)
             log_entry["chain_hash"] = prev_hash
             log_entries.append(log_entry)
             result["success"] = False
+        finally:
+            if proc and proc.poll() is None:
+                proc.kill()
 
-        try:
-            self.progress.emit("Starting random sector sampling...")
-            dev_size = self._device_size_bytes()
-            samples = self._sample_random_sectors(device_path, dev_size, self.sample_count)
-            sample_entry = {
-                "event": "sector_samples",
-                "samples": samples,
-                "timestamp": time.strftime("%Y%m%d_%H%M%S")
-            }
-            eb = json.dumps(sample_entry, sort_keys=True).encode("utf-8")
-            prev_hash = self._chain_hash(prev_hash, eb)
-            sample_entry["chain_hash"] = prev_hash
-            log_entries.append(sample_entry)
-            self.progress.emit(f"Sampled {len(samples)} sectors.")
-        except Exception as e:
-            self.progress.emit(f"Sector sampling failed: {e}")
-            sample_entry = {
-                "event": "sector_samples_error",
-                "error": str(e),
-                "timestamp": time.strftime("%Y%m%d_%H%M%S")
-            }
-            eb = json.dumps(sample_entry, sort_keys=True).encode("utf-8")
-            prev_hash = self._chain_hash(prev_hash, eb)
-            sample_entry["chain_hash"] = prev_hash
-            log_entries.append(sample_entry)
 
+        self.progress.emit("Starting random sector sampling for verification...")
+        dev_size = self._device_size_bytes()
+        samples = self._sample_random_sectors(device_path, dev_size, self.sample_count)
+        sample_entry = { "event": "sector_samples", "samples": samples, "timestamp": time.time() }
+        eb = json.dumps(sample_entry, sort_keys=True).encode("utf-8")
+        prev_hash = self._chain_hash(prev_hash, eb)
+        sample_entry["chain_hash"] = prev_hash
+        log_entries.append(sample_entry)
+        self.progress.emit(f"Sampled {len(samples)} sectors.")
+
+        final_hash = prev_hash
+        txid = anchor_hash(final_hash)
+        
         end_entry = {
             "event": "end_wipe",
-            "timestamp": time.strftime("%Y%m%d_%H%M%S"),
-            "success": result["success"]
+            "timestamp": time.time(),
+            "success": result["success"],
+            "final_hash": final_hash,
+            "txid": txid
         }
         eb = json.dumps(end_entry, sort_keys=True).encode("utf-8")
         prev_hash = self._chain_hash(prev_hash, eb)
         end_entry["chain_hash"] = prev_hash
         log_entries.append(end_entry)
 
-        try:
-            with open(log_file, "w") as f:
-                json.dump({"entries": log_entries}, f, indent=2)
-            self.progress.emit(f"Wipe log saved: {log_file}")
-        except Exception as e:
-            self.progress.emit(f"Failed to write log file: {e}")
+        with open(log_file, "w") as f:
+            json.dump({"log_entries": log_entries}, f, indent=2)
 
-        final_hash = prev_hash
-        result["final_hash"] = final_hash
-
+        # Generate certificate and reports
         try:
-            txid = anchor_hash(final_hash)
-            result["txid"] = txid
-            self.progress.emit(f"Anchored final hash to ledger: {txid}")
-        except Exception as e:
-            self.progress.emit(f"Failed to anchor hash: {e}")
-
-        try:
-            pdf_file, json_file = generate_report_and_sign(
+            json_path, pdf_path, cert_data_dict = generate_report_and_sign(
                 drive=self.drive,
                 serial=self.serial,
-                method=method_name,
+                wipe_method=method_name,
                 success=result["success"],
                 final_hash=final_hash,
-                log_path=log_file,
-                txid=result.get("txid")
+                txid=txid
             )
-            result["pdf"] = pdf_file
-            result["json"] = json_file
-            self.progress.emit(f"Generated report: {pdf_file}, {json_file}")
+            result["pdf"] = pdf_path
+            result["json"] = json_path
+            result["cert_data"] = cert_data_dict # This is the crucial part for the viewer
+            self.progress.emit(f"Generated report: {pdf_path}")
         except Exception as e:
             self.progress.emit(f"Failed to generate signed report: {e}")
 
         self.finished.emit(result)
+

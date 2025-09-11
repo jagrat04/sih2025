@@ -1,29 +1,31 @@
 import json
 import os
 import datetime
-import hashlib
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
+from reportlab.lib.units import inch
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives import serialization
 
 KEYS_DIR = "keys"
+WIPES_DIR = "wipes"
 
-def ensure_wipes_folder():
-    if not os.path.exists("wipes"):
-        os.makedirs("wipes")
+def ensure_dirs():
+    """Ensure the necessary directories for keys and wipe reports exist."""
+    os.makedirs(KEYS_DIR, exist_ok=True)
+    os.makedirs(WIPES_DIR, exist_ok=True)
 
 def load_private_key():
-    """Load or generate an Ed25519 private key"""
-    if not os.path.exists(KEYS_DIR):
-        os.makedirs(KEYS_DIR)
-
+    """
+    Loads an existing Ed25519 private key from the 'keys' directory.
+    If no key exists, it generates a new one and saves it.
+    """
     key_path = os.path.join(KEYS_DIR, "private_key.pem")
     if os.path.exists(key_path):
         with open(key_path, "rb") as f:
             return serialization.load_pem_private_key(f.read(), password=None)
     else:
-        # Generate new private key
+        # Generate and save a new private key if one isn't found
         private_key = Ed25519PrivateKey.generate()
         with open(key_path, "wb") as f:
             f.write(private_key.private_bytes(
@@ -34,54 +36,76 @@ def load_private_key():
         return private_key
 
 def generate_pdf(cert_data, pdf_path):
-    """Generate PDF certificate"""
+    """Generates a PDF certificate from the provided data."""
     c = canvas.Canvas(pdf_path, pagesize=A4)
     width, height = A4
 
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(200, height - 80, "Secure Wipe Certificate")
+    # Title
+    c.setFont("Helvetica-Bold", 20)
+    c.drawCentredString(width / 2.0, height - 1*inch, "Certificate of Data Erasure")
 
-    c.setFont("Helvetica", 12)
-    y = height - 120
+    # Certificate Details
+    c.setFont("Helvetica", 11)
+    text = c.beginText(1*inch, height - 2*inch)
+    text.setLeading(18)  # Set line spacing
+
     for key, value in cert_data.items():
-        c.drawString(50, y, f"{key}: {value}")
-        y -= 20
-
-    c.showPage()
+        # Use a monospaced font for long hashes to ensure alignment and readability
+        if len(str(value)) > 70:
+            text.setFont("Helvetica-Bold", 11)
+            text.textLine(f"{key}:")
+            text.setFont("Courier", 9)
+            text.textLine(f"  {value}")
+        else:
+            text.setFont("Helvetica-Bold", 11)
+            text.textOut(f"{key}: ")
+            text.setFont("Helvetica", 11)
+            text.textLine(str(value))
+            
+    c.drawText(text)
+    
+    # Footer
+    c.setFont("Helvetica-Oblique", 9)
+    c.drawString(1*inch, 1*inch, "This certificate confirms sanitation in accordance with NIST 800-88 guidelines.")
+    
     c.save()
 
-def generate_report_and_sign(drive, wipe_method, final_hash, txid):
-    """Generate JSON + PDF and sign the JSON"""
-    ensure_wipes_folder()
-
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-
+def generate_report_and_sign(drive, serial, wipe_method, success, final_hash, txid):
+    """
+    Creates JSON and PDF reports, signs the data, and returns the certificate details.
+    """
+    ensure_dirs()
+    timestamp = datetime.datetime.now()
+    
     cert_data = {
-        "drive": drive,
-        "wipe_method": wipe_method,
-        "final_hash": final_hash,
-        "ledger_txid": txid,
-        "timestamp": timestamp,
-        "status": "Wipe completed successfully"
+        "Drive Name": drive,
+        "Drive Serial": serial or "N/A",
+        "Wipe Method": wipe_method,
+        "Status": "Success" if success else "FAILED",
+        "Timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+        "Verification Hash": final_hash,
+        "Ledger ID": txid,
     }
+    
+    base_name = f"{drive.replace('/', '_')}_{timestamp.strftime('%Y%m%d_%H%M%S')}"
+    json_path = os.path.join(WIPES_DIR, f"{base_name}.json")
+    pdf_path = os.path.join(WIPES_DIR, f"{base_name}.pdf")
+    sig_path = os.path.join(WIPES_DIR, f"{base_name}.sig")
 
-    json_path = f"wipes/{drive}_{timestamp}.json"
-    pdf_path = f"wipes/{drive}_{timestamp}.pdf"
-    sig_path = f"wipes/{drive}_{timestamp}.sig"
-
-    # Save JSON
+    # 1. Save JSON report
     with open(json_path, "w") as f:
         json.dump(cert_data, f, indent=4)
 
-    # Save PDF
+    # 2. Generate PDF certificate
     generate_pdf(cert_data, pdf_path)
 
-    # Sign the JSON
+    # 3. Sign the JSON data with the private key
     private_key = load_private_key()
     message = json.dumps(cert_data, sort_keys=True).encode()
     signature = private_key.sign(message)
     with open(sig_path, "wb") as f:
         f.write(signature)
+    
+    # Return file paths and the data dictionary for the GUI viewer
+    return json_path, pdf_path, cert_data
 
-    print(f"[+] Certificate generated: {json_path}, {pdf_path}, {sig_path}")
-    return json_path, pdf_path, sig_path

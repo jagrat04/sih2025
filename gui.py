@@ -3,8 +3,10 @@ from PyQt5.QtWidgets import (
     QApplication, QWidget, QPushButton, QLabel, QVBoxLayout,
     QMessageBox, QTextEdit, QComboBox, QProgressBar
 )
+from PyQt5.QtGui import QFont # <--- FIX: Import QFont here
 from drive_manager import list_drives
 from wipe_manager import WipeThread
+from certificate_viewer import CertificateViewer # Import the new viewer
 
 class WiperApp(QWidget):
     def __init__(self):
@@ -20,6 +22,10 @@ class WiperApp(QWidget):
         # Drive dropdown
         self.drive_dropdown = QComboBox()
         layout.addWidget(self.drive_dropdown)
+        
+        # Add a dummy drive for testing without root
+        self.drive_dropdown.addItem("DUMMY (5MB file for testing)", {"name": "dummy", "media_type": "Dummy Test", "serial": "DUMMY-001"})
+
 
         # Refresh button
         self.refresh_button = QPushButton("Refresh Drives")
@@ -40,14 +46,20 @@ class WiperApp(QWidget):
         # Log box
         self.log_box = QTextEdit()
         self.log_box.setReadOnly(True)
+        self.log_box.setFont(QFont("Courier New", 9))
         layout.addWidget(self.log_box)
 
         self.setLayout(layout)
         self.load_drives()
+        self.thread = None # To hold the worker thread
 
     def load_drives(self):
+        # We keep the dummy entry, so we clear from index 1
+        # This prevents removing the dummy drive on refresh
+        while self.drive_dropdown.count() > 1:
+            self.drive_dropdown.removeItem(1)
+            
         drives = list_drives()
-        self.drive_dropdown.clear()
         for d in drives:
             if "error" in d:
                 self.drive_dropdown.addItem(d["error"], None)
@@ -61,82 +73,68 @@ class WiperApp(QWidget):
             QMessageBox.warning(self, "Error", "No drive selected")
             return
 
-        # Confirm (uncomment if desired)
-        # confirm = QMessageBox.question(
-        #     self,
-        #     "Confirm Wipe",
-        #     f"Are you sure you want to wipe {drive_info['name']} "
-        #     f"({drive_info['media_type']})?\n"
-        #     f"NIST method will be auto-selected."
-        # )
-        # if confirm != QMessageBox.Yes:
-        #     return
+        confirm = QMessageBox.question(
+            self,
+            "Confirm Wipe",
+            f"!!! ALL DATA WILL BE PERMANENTLY DESTROYED !!!\n\n"
+            f"Are you absolutely sure you want to wipe {drive_info.get('name')} "
+            f"({drive_info.get('media_type')})?",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+        )
+        if confirm != QMessageBox.Yes:
+            return
 
         self.progress_bar.show()
         self.log_box.clear()
+        self.wipe_button.setEnabled(False)
+        self.refresh_button.setEnabled(False)
 
-        # Start wipe thread with auto method (decided inside wipe_manager)
-        # The finished signal now returns a rich result tuple/object
-        self.thread = WipeThread(drive_info["name"], drive_info["media_type"], drive_info.get("serial"))
+        self.thread = WipeThread(
+            drive_info["name"],
+            drive_info["media_type"],
+            drive_info.get("serial")
+        )
         self.thread.progress.connect(self.update_log)
         self.thread.finished.connect(self.wipe_done)
         self.thread.start()
 
     def update_log(self, line):
-        # May receive long strings; ensure UI remains responsive
         self.log_box.append(line)
+        self.log_box.verticalScrollBar().setValue(self.log_box.verticalScrollBar().maximum())
+
 
     def wipe_done(self, result):
-        """Result is a dict:
-           {
-             success: bool,
-             method: str,
-             pdf: str,
-             json: str,
-             final_hash: str,
-             txid: str or None,
-             log_path: str
-           }
+        """
+        This function is now more robust. It provides detailed feedback if
+        certificate generation fails, otherwise it opens the viewer.
         """
         self.progress_bar.hide()
+        self.wipe_button.setEnabled(True)
+        self.refresh_button.setEnabled(True)
+        
+        self.log_box.append("\n=== WIPE PROCESS FINISHED ===")
 
-        drive = self.drive_dropdown.currentData()
+        # More detailed check and logging
         if result is None:
+            self.log_box.append("ERROR: Wipe thread returned no result object.")
             QMessageBox.critical(self, "Error", "Wipe thread failed unexpectedly.")
             return
 
-        success = result.get("success", False)
-        method = result.get("method", "Unknown")
-        pdf = result.get("pdf")
-        js = result.get("json")
-        final_hash = result.get("final_hash")
-        txid = result.get("txid")
+        if not result.get("success", False):
+             self.log_box.append("WARNING: Wipe process failed. Check logs above for details.")
 
-        msg = QMessageBox()
-        if success:
-            body = (f"✅ Wipe completed.\n"
-                    f"Drive: {drive['name']}\n"
-                    f"Method: {method}\n\n"
-                    f"Reports:\n📄 {pdf}\n📝 {js}\n\n"
-                    f"Verification Hash:\n{final_hash}\n")
-            if txid:
-                body += f"\nBlockchain TxID / Ledger ID:\n{txid}"
-            msg.setText(body)
-        else:
-            body = (f"❌ Wipe failed for {drive['name']}.\n"
-                    f"Method: {method}\n\n"
-                    f"Reports (if any):\n📄 {pdf}\n📝 {js}\n\n"
-                    f"Verification Hash:\n{final_hash if final_hash else 'N/A'}")
-            if txid:
-                body += f"\nLedger ID (partial): {txid}"
-            msg.setText(body)
-        msg.exec_()
+        cert_data = result.get("cert_data")
+        
+        if not cert_data:
+             self.log_box.append("\nERROR: Certificate data was not generated by the wipe thread.")
+             self.log_box.append("This could be due to a file permission error or an issue in the report generator.")
+             QMessageBox.critical(self, "Error", "Wipe completed, but failed to generate a valid certificate. Please check the log for errors.")
+             return
 
-        self.log_box.append("=== Wipe Done ===")
-        if final_hash:
-            self.log_box.append(f"Verification Hash: {final_hash}")
-        if txid:
-            self.log_box.append(f"Ledger TX/ID: {txid}")
+        # Show the certificate viewer dialog if all checks pass
+        self.log_box.append("Wipe successful. Opening certificate viewer...")
+        cert_viewer = CertificateViewer(result, self)
+        cert_viewer.exec_()
 
 
 if __name__ == "__main__":
@@ -144,3 +142,4 @@ if __name__ == "__main__":
     window = WiperApp()
     window.show()
     sys.exit(app.exec_())
+
