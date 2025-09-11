@@ -7,6 +7,8 @@ from PyQt5.QtGui import QFont # <--- FIX: Import QFont here
 from drive_manager import list_drives
 from wipe_manager import WipeThread
 from certificate_viewer import CertificateViewer # Import the new viewer
+from PyQt5.QtWidgets import QListWidget, QListWidgetItem
+
 
 class WiperApp(QWidget):
     def __init__(self):
@@ -19,10 +21,10 @@ class WiperApp(QWidget):
         self.label = QLabel("Select a drive to wipe (method auto-selected per NIST):")
         layout.addWidget(self.label)
 
-        # Drive dropdown
-        self.drive_dropdown = QComboBox()
-        layout.addWidget(self.drive_dropdown)
-        
+        self.drive_list = QListWidget()
+        self.drive_list.setSelectionMode(QListWidget.MultiSelection)
+        layout.addWidget(self.drive_list)
+                
         # Add a dummy drive for testing without root
         self.drive_dropdown.addItem("DUMMY (5MB file for testing)", {"name": "dummy", "media_type": "Dummy Test", "serial": "DUMMY-001"})
 
@@ -56,29 +58,29 @@ class WiperApp(QWidget):
     def load_drives(self):
         # We keep the dummy entry, so we clear from index 1
         # This prevents removing the dummy drive on refresh
-        while self.drive_dropdown.count() > 1:
-            self.drive_dropdown.removeItem(1)
-            
-        drives = list_drives()
-        for d in drives:
-            if "error" in d:
-                self.drive_dropdown.addItem(d["error"], None)
-                continue
-            display = f"{d['name']} | {d['size']} | {d['model']} | {d['media_type']} | {d.get('serial','')}"
-            self.drive_dropdown.addItem(display, d)
+        def load_drives(self):
+        # Keep dummy, clear rest
+            while self.drive_list.count() > 1:
+                self.drive_list.takeItem(1)
+
+            drives = list_drives()
+            for d in drives:
+                display = d.get("error") or f"{d['name']} | {d['size']} | {d['model']} | {d['media_type']} | {d.get('serial','')}"
+                item = QListWidgetItem(display)
+                item.setData(1000, d)
+                self.drive_list.addItem(item)
 
     def start_wipe(self):
-        drive_info = self.drive_dropdown.currentData()
-        if not drive_info:
-            QMessageBox.warning(self, "Error", "No drive selected")
+        selected_items = self.drive_list.selectedItems()
+        if not selected_items:
+            QMessageBox.warning(self, "Error", "No drive(s) selected")
             return
 
         confirm = QMessageBox.question(
             self,
             "Confirm Wipe",
-            f"!!! ALL DATA WILL BE PERMANENTLY DESTROYED !!!\n\n"
-            f"Are you absolutely sure you want to wipe {drive_info.get('name')} "
-            f"({drive_info.get('media_type')})?",
+            "!!! ALL DATA WILL BE PERMANENTLY DESTROYED ON SELECTED DRIVES !!!\n\n"
+            "Are you sure?",
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No
         )
         if confirm != QMessageBox.Yes:
@@ -89,14 +91,22 @@ class WiperApp(QWidget):
         self.wipe_button.setEnabled(False)
         self.refresh_button.setEnabled(False)
 
-        self.thread = WipeThread(
-            drive_info["name"],
-            drive_info["media_type"],
-            drive_info.get("serial")
-        )
-        self.thread.progress.connect(self.update_log)
-        self.thread.finished.connect(self.wipe_done)
-        self.thread.start()
+        self.threads = []  # Track multiple threads
+
+        for item in selected_items:
+            drive_info = item.data(1000)
+            thread = WipeThread(
+                drive_info["name"],
+                drive_info["media_type"],
+                drive_info.get("serial")
+            )
+            thread.progress.connect(lambda line, d=drive_info["name"]: self.update_log(f"[{d}] {line}"))
+            thread.finished.connect(self.thread_done)
+            self.threads.append(thread)
+            thread.start()
+
+        self.remaining_threads = len(self.threads)
+
 
     def update_log(self, line):
         self.log_box.append(line)
@@ -135,6 +145,24 @@ class WiperApp(QWidget):
         self.log_box.append("Wipe successful. Opening certificate viewer...")
         cert_viewer = CertificateViewer(result, self)
         cert_viewer.exec_()
+    
+    def thread_done(self, result):
+        self.remaining_threads -= 1
+        if not result.get("success", False):
+            self.log_box.append(f"[{result.get('drive','?')}] WARNING: Wipe failed.")
+
+        cert_data = result.get("cert_data")
+        if cert_data:
+            self.log_box.append(f"[{result.get('drive','?')}] Certificate generated successfully.")
+        else:
+            self.log_box.append(f"[{result.get('drive','?')}] ERROR: No certificate generated.")
+
+        # When all threads are done, re-enable UI
+        if self.remaining_threads == 0:
+            self.progress_bar.hide()
+            self.wipe_button.setEnabled(True)
+            self.refresh_button.setEnabled(True)
+            self.log_box.append("\n=== ALL WIPE PROCESSES FINISHED ===")
 
 
 if __name__ == "__main__":
