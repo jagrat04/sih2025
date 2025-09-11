@@ -101,7 +101,7 @@ class WiperApp(QWidget):
                 drive_info.get("serial")
             )
             thread.progress.connect(lambda line, d=drive_info["name"]: self.update_log(f"[{d}] {line}"))
-            thread.finished.connect(self.thread_done)
+            thread.finished.connect(lambda result, d=drive_info["name"]: self.wipe_done(result))
             self.threads.append(thread)
             thread.start()
 
