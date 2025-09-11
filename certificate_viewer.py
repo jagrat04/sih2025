@@ -1,3 +1,4 @@
+# certificate_viewer.py
 import sys
 import os
 import subprocess
@@ -39,14 +40,15 @@ class CertificateViewer(QDialog):
         pdf_path = self.result_data.get("pdf", "N/A")
 
         # Data fields to display
+        # --- FIX: Using the correct keys from the generated certificate ---
         fields = {
-            "Status": self.cert_data.get("status", "Unknown"),
-            "Drive": self.cert_data.get("drive", "N/A"),
-            "Serial Number": self.cert_data.get("serial", "N/A"),
-            "Wipe Method": self.cert_data.get("wipe_method", "N/A"),
-            "Timestamp": self.cert_data.get("timestamp", "N/A"),
-            "Final Verification Hash": self.cert_data.get("final_hash", "N/A"),
-            "Ledger TXID": self.cert_data.get("ledger_txid", "N/A"),
+            "Status": self.cert_data.get("Status", "Unknown"),
+            "Drive": self.cert_data.get("Drive Name", "N/A"),
+            "Serial Number": self.cert_data.get("Drive Serial", "N/A"),
+            "Wipe Method": self.cert_data.get("Wipe Method", "N/A"),
+            "Timestamp": self.cert_data.get("Timestamp", "N/A"),
+            "Final Verification Hash": self.cert_data.get("Verification Hash", "N/A"),
+            "Ledger ID": self.cert_data.get("Ledger ID", "N/A"),
             "PDF Report": pdf_path,
         }
         
@@ -87,7 +89,13 @@ class CertificateViewer(QDialog):
         """
         Runs the verification logic from verify.py and updates the UI.
         """
-        is_valid, message = verify_by_json_data(self.cert_data)
+        # --- FIX: Using the correct keys to pass to the verification function ---
+        data_to_verify = {
+            "ledger_txid": self.cert_data.get("Ledger ID"),
+            "final_hash": self.cert_data.get("Verification Hash")
+        }
+        
+        is_valid, message = verify_by_json_data(data_to_verify)
 
         if is_valid:
             self.verification_status.setText(f"✅ VERIFIED\n{message}")
